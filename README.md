@@ -46,7 +46,7 @@ Make sure the following are installed on your system:
 Clone the repository:
 
 ```bash
-git clone https://github.com/minidumaheesha/ITPM-Playwright-Project.git
+git clone https://github.com/minidumaheesha/ITPM-Playwright-Project
 
 ```
 ---
