@@ -161,82 +161,115 @@ test('Pos_Fun_0024: Slang phrase', async ({ page }) => {
   await expect(OUTPUT(page)).toContainText('මචන්');
 });
 
-/* ---------------- NEW NEGATIVE FUNCTIONAL TEST CASES ---------------- */
+/* ---------------- NEGATIVE FUNCTIONAL TEST CASES ---------------- */
 
-test('Neg_Fun_0001: Input with only whitespace', async ({ page }) => {
+test('Neg_Fun_0001: Incorrect negation handling in present tense', async ({ page }) => {
   await page.goto(URL);
-  await page.locator(INPUT).fill('     ');
-  await expect(OUTPUT(page)).toBeEmpty();
+  await page.locator(INPUT).fill('');
+  await page.locator(INPUT).pressSequentially('mama ehema karanavaa naehae', { delay: 50 });
+
+  // Expect correct negation (but system fails)
+  await expect(OUTPUT(page)).not.toContainText('නෑ');
 });
 
-test('Neg_Fun_0002: Input with only numbers', async ({ page }) => {
+test('Neg_Fun_0002: Failure to handle joined words', async ({ page }) => {
   await page.goto(URL);
-  await page.locator(INPUT).fill('123456789');
-  await expect(OUTPUT(page)).not.toContainText('සිංහල');
+  await page.locator(INPUT).fill('');
+  await page.locator(INPUT).pressSequentially('matabathonee', { delay: 50 });
+
+  await expect(OUTPUT(page)).not.toContainText('මට බත් ඕනේ');
 });
 
-test('Neg_Fun_0003: Input with only special characters', async ({ page }) => {
+test('Neg_Fun_0003: Incorrect tense interpretation (future vs present)', async ({ page }) => {
   await page.goto(URL);
-  await page.locator(INPUT).fill('@@@###$$$');
-  await expect(OUTPUT(page)).toBeEmpty();
+  await page.locator(INPUT).fill('');
+  await page.locator(INPUT).pressSequentially('mama heta vaeda karanavaa', { delay: 50 });
+
+  await expect(OUTPUT(page)).not.toContainText('කරාවි');
 });
 
-test('Neg_Fun_0004: Very short meaningless input', async ({ page }) => {
+test('Neg_Fun_0004: Mixed English brand term incorrectly translated', async ({ page }) => {
   await page.goto(URL);
-  await page.locator(INPUT).fill('aa');
-  await expect(OUTPUT(page)).not.toContainText('අ');
+  await page.locator(INPUT).fill('');
+  await page.locator(INPUT).pressSequentially('mama Zoom open karanavaa', { delay: 50 });
+
+  // Zoom should stay unchanged, but system transliterates
+  await expect(OUTPUT(page)).not.toContainText('Zoom open');
 });
 
-test('Neg_Fun_0005: Random mixed characters', async ({ page }) => {
+test('Neg_Fun_0005: Failure in compound sentence conjunction handling', async ({ page }) => {
   await page.goto(URL);
-  await page.locator(INPUT).fill('ab12@#cd');
-  await expect(OUTPUT(page)).not.toContainText('සිංහල');
+  await page.locator(INPUT).fill('');
+  await page.locator(INPUT).pressSequentially(
+    'mama gedhara yanavaa namuth oyaa enne naehae',
+    { delay: 50 }
+  );
+
+  await expect(OUTPUT(page)).not.toContainText('නමුත්');
 });
 
-test('Neg_Fun_0006: Unsupported language input (Tamil)', async ({ page }) => {
+test('Neg_Fun_0006: Pronoun ambiguity not resolved correctly', async ({ page }) => {
   await page.goto(URL);
-  await page.locator(INPUT).fill('வணக்கம்');
-  await expect(OUTPUT(page)).not.toContainText('වණ');
+  await page.locator(INPUT).fill('');
+  await page.locator(INPUT).pressSequentially('eya gedhara enavaa', { delay: 50 });
+
+  // Expected "ඇය", but system outputs "ඔයා"
+  await expect(OUTPUT(page)).toContainText('ඔයා');
 });
 
-test('Neg_Fun_0007: Input with excessive repeated characters', async ({ page }) => {
+test('Neg_Fun_0007: Incorrect handling of repeated emphasis words', async ({ page }) => {
   await page.goto(URL);
-  await page.locator(INPUT).fill('aaaaaaa');
-  await expect(OUTPUT(page)).not.toContainText('අ');
+  await page.locator(INPUT).fill('');
+  await page.locator(INPUT).pressSequentially('hari hari lassanai', { delay: 50 });
+
+  // Repetition lost
+  await expect(OUTPUT(page)).not.toContainText('හරි හරි');
 });
 
-test('Neg_Fun_0008: HTML tags entered as input', async ({ page }) => {
+test('Neg_Fun_0008: Incorrect plural handling', async ({ page }) => {
   await page.goto(URL);
-  await page.locator(INPUT).fill('<script>alert(1)</script>');
-  await expect(OUTPUT(page)).not.toContainText('alert');
+  await page.locator(INPUT).fill('');
+  await page.locator(INPUT).pressSequentially('oyaalaa enavaa', { delay: 50 });
+
+  // Converted incorrectly to singular
+  await expect(OUTPUT(page)).toContainText('ඔයා');
 });
 
-test('Neg_Fun_0009: Input exceeding normal sentence length', async ({ page }) => {
+test('Neg_Fun_0009: Incorrect punctuation placement in question', async ({ page }) => {
   await page.goto(URL);
-  await page.locator(INPUT).fill('mama gedhara yanavaa '.repeat(30));
-  await expect(OUTPUT(page)).not.toContainText('දෝෂ');
+  await page.locator(INPUT).fill('');
+  await page.locator(INPUT).pressSequentially('oyaa enavadha', { delay: 50 });
+
+  // Question mark missing
+  await expect(OUTPUT(page)).not.toContainText('?');
 });
 
-test('Neg_Fun_0010: Mixed uppercase and lowercase Singlish', async ({ page }) => {
+test('Neg_Fun_0010: Incorrect handling of extra spaces', async ({ page }) => {
   await page.goto(URL);
-  await page.locator(INPUT).fill('MaMa GeDhArA YaNaVaA');
-  await expect(OUTPUT(page)).not.toContainText('ගෙදර යනවා');
+  await page.locator(INPUT).fill('');
+  await page.locator(INPUT).pressSequentially('mama   gedhara   yanavaa', { delay: 50 });
+
+  // Extra spaces not normalized
+  const outputText = await OUTPUT(page).textContent();
+  expect(outputText).toMatch(/\s{2,}/);
 });
 
-/* ---------------- NEW UI-RELATED TEST CASE ---------------- */
+// ---------------- POSITIVE UI TEST CASES ----------------
 
-test('Pos_UI_0001: Clearing input field clears Sinhala output', async ({ page }) => {
+test('Pos_UI_0001: Real-time Sinhala output updates as user types Singlish input', async ({ page }) => {
+  // Navigate to the translator
   await page.goto(URL);
 
-  const inputField = page.locator(INPUT);
+  // Clear input field if needed
+  await page.locator(INPUT).fill('');
 
-  // Type valid Singlish text
-  await inputField.fill('mama gedhara yanavaa');
-  await expect(OUTPUT(page)).toContainText('ගෙදර');
+  // Singlish sentence to type gradually
+  const singlishSentence = 'mama gedhara yanavaa';
+  const sinhalaExpected = 'මම ගෙදර යනවා';
 
-  // Clear input
-  await inputField.fill('');
+  // Type character by character with a slight delay
+  await page.locator(INPUT).pressSequentially(singlishSentence, { delay: 50 });
 
-  // Output should also clear
-  await expect(OUTPUT(page)).toBeEmpty();
+  // Assert that the Sinhala output updates correctly in real-time
+  await expect(OUTPUT(page)).toContainText(sinhalaExpected);
 });
